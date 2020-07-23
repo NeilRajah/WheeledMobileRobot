@@ -1,50 +1,79 @@
+/**
+   EncoderTest
+   Author: Neil Balaskandarajah
+   Created on: 23/07/2020
+   Testing the Encoders out
+*/
 
-#define ENC_A 3
-#define ENC_B 2
-#define TICKS_PER_REV 297.0
-#define DIA 30  //mm
+class Encoder {
+  String tag;
+  byte pinA;
+  static byte pinB;
+  float TICKS_PER_REV;
+  float DIA;
+  static int ticks;
 
-//Encoder values
-int pos = 0;
+  public:
+    Encoder(String label, byte A, byte B, float TICKS, float D) {
+      tag = label;
+      pinA = A;
+      pinB = B;
+      TICKS_PER_REV = TICKS;
+      DIA = D;
+    }
+
+    void setup() {
+      pinMode(pinA, INPUT_PULLUP);
+      pinMode(pinB, INPUT_PULLUP);
+      ticks = 0;
+
+      attachInterrupt(digitalPinToInterrupt(pinA), Encoder::updateEncoder, RISING);
+    }
+
+    void loop() {
+      displayEncoder();
+    }
+
+    void displayEncoder() {
+      Serial.print(ticks);
+      Serial.print("\t");
+      Serial.print(getPos());
+      Serial.println();
+    }
+
+    static void updateEncoder() {
+      if (digitalRead(pinB) == HIGH) {
+        ticks++;
+      } else {
+        ticks--;
+      }
+    }
+
+    int getPos() {
+      return (ticks / TICKS_PER_REV) * PI * DIA;
+    }
+
+    //TO-DO: getVel()
+};
 
 //Timing values
 int curr;
 int prev;
 int INTERVAL = 20;
 
+Encoder leftEnc("Left", 3, 2, 297.0, 30);
+
 void setup() {
-  Serial.begin(9600);
-  pinMode(ENC_A, INPUT_PULLUP);
-  pinMode(ENC_B, INPUT_PULLUP);
+  //  Serial.begin(9600);
   prev = millis();
-  
-  attachInterrupt(digitalPinToInterrupt(ENC_A), updateEncoder, RISING);
+  leftEnc.setup();
 }
 
 void loop() {
   curr = millis();
   if (curr - prev >= INTERVAL) {
     prev = curr;
-    
-    displayEncoder();
+
+    leftEnc.loop();
   }
-}
-
-void updateEncoder() {
-  if (digitalRead(ENC_B) == HIGH) {
-    pos++;
-  } else {
-    pos--;
-  }
-}
-
-float ticksToInches(int ticks) {
-  return (ticks / TICKS_PER_REV) * PI*DIA;
-}
-
-void displayEncoder() {
-  Serial.print(pos);
-  Serial.print("\t");  
-  Serial.print(ticksToInches(pos));
-  Serial.println();  
 }
