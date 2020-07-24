@@ -1,79 +1,97 @@
 /**
    EncoderTest
    Author: Neil Balaskandarajah
-   Created on: 23/07/2020
+   Created on: 24/07/2020
    Testing the Encoders out
 */
 
-class Encoder {
-  String tag;
-  byte pinA;
-  static byte pinB;
-  float TICKS_PER_REV;
-  float DIA;
-  static int ticks;
+//Constants
+#define TICKS_PER_REV 297.0   //Encoder ticks per revolution
+#define DIA 30                //Wheel diameter in mm
+#define INTERVAL 20           //Loop period in ms
 
-  public:
-    Encoder(String label, byte A, byte B, float TICKS, float D) {
-      tag = label;
-      pinA = A;
-      pinB = B;
-      TICKS_PER_REV = TICKS;
-      DIA = D;
-    }
+//Encoder pins
+#define leftEncA 2
+#define leftEncB 5
+#define rightEncA 3
+#define rightEncB 4
 
-    void setup() {
-      pinMode(pinA, INPUT_PULLUP);
-      pinMode(pinB, INPUT_PULLUP);
-      ticks = 0;
-
-      attachInterrupt(digitalPinToInterrupt(pinA), Encoder::updateEncoder, RISING);
-    }
-
-    void loop() {
-      displayEncoder();
-    }
-
-    void displayEncoder() {
-      Serial.print(ticks);
-      Serial.print("\t");
-      Serial.print(getPos());
-      Serial.println();
-    }
-
-    static void updateEncoder() {
-      if (digitalRead(pinB) == HIGH) {
-        ticks++;
-      } else {
-        ticks--;
-      }
-    }
-
-    int getPos() {
-      return (ticks / TICKS_PER_REV) * PI * DIA;
-    }
-
-    //TO-DO: getVel()
-};
+//Encoder values
+int leftTicks;
+int rightTicks;
 
 //Timing values
 int curr;
 int prev;
-int INTERVAL = 20;
 
-Encoder leftEnc("Left", 3, 2, 297.0, 30);
-
+/**
+ * Set up the pins and the code
+ */
 void setup() {
-  //  Serial.begin(9600);
+  //Initialize Serial and set pin modes
+  Serial.begin(9600);
+  pinMode(leftEncA, INPUT_PULLUP);
+  pinMode(leftEncB, INPUT_PULLUP);
+  pinMode(rightEncA, INPUT_PULLUP);
+  pinMode(rightEncB, INPUT_PULLUP);
+
+  //Side threads to track encoders
+  attachInterrupt(digitalPinToInterrupt(leftEncA), updateLeftEncoder, RISING);
+  attachInterrupt(digitalPinToInterrupt(rightEncA), updateRightEncoder, RISING);
+
+  //Initialize variables
+  leftTicks = 0;
+  rightTicks  = 0;
   prev = millis();
-  leftEnc.setup();
 }
 
+/**
+ * Display encoders
+ */
 void loop() {
   curr = millis();
   if (curr - prev >= INTERVAL) {
-    prev = curr;
+    prev = millis();
+    
+    displayEncoders();
+  }
+}
 
-    leftEnc.loop();
+/**
+ * Print the encoder positions (mm) to the screen
+ */
+void displayEncoders() {
+  Serial.print(ticksToInches(leftTicks));
+  Serial.print(' ');
+  Serial.print(ticksToInches(rightTicks));
+  Serial.println();
+}
+
+/**
+ * Convert encoder ticks to inches
+ */
+float ticksToInches(int ticks) {
+  return (ticks / TICKS_PER_REV) * PI * DIA;
+}
+
+/**
+ * Update the left encoder
+ */
+void updateLeftEncoder() {
+  if (digitalRead(leftEncA) == digitalRead(leftEncB)) {
+    leftTicks++;
+  } else {
+    leftTicks--;
+  }
+}
+
+/**
+ * Update the right encoder (mirror of left)
+ */
+void updateRightEncoder() {
+  if (digitalRead(rightEncA) == digitalRead(rightEncB)) {
+    rightTicks--;
+  } else {
+    rightTicks++;
   }
 }
