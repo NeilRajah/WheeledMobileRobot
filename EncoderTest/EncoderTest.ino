@@ -50,7 +50,8 @@ void setup() {
  */
 void loop() {
   curr = millis();
-  if (curr - prev >= INTERVAL) {
+  float delta = curr - prev;
+  if (delta >= INTERVAL) {
     prev = millis();
     
     displayEncoders();
